@@ -4,7 +4,6 @@ import torch.nn as nn
 from torch.distributions import Normal, Bernoulli, Categorical
 from itertools import count
 import numpy as np
-from numba import njit
 from collections import deque
 from global_ import *
 
@@ -27,13 +26,12 @@ class NN_ab(nn.Module):
         super().__init__()
         # sub network
         self.net_ir =  Intrinsic_Reward()
-        self.net_pg = PPO(4,1)
+        self.net_pg = PPO(28,8)
 
     def forward(self, observation):
         state, d = observation
-        #wasted = in_a[0].astype(bool)
         #state_tensor = torch.from_numpy(state).to(device)
-        state = state.astype(np.float32)
+        state = state.astype(np.float32)[:28] # to reduce the heavy of computation
         # net a. Do not need to update parameters
         with torch.no_grad():
             intrinsic_reward = self.net_ir(state)
@@ -53,12 +51,12 @@ class NN_a_random_b(nn.Module):
     def forward(self, observation):
         if  self.ini:
             self.ini = False
-            self.net_pg = PPO(4,1)
+            self.net_pg = PPO(28,8)
             self.net_pg.actor_net.initial = False
         state, d = observation
         #wasted = in_a[0].astype(bool)
         #state_tensor = torch.from_numpy(state).to(device)
-        state = state.astype(np.float32)
+        state = state.astype(np.float32)[:28] # to reduce the heavy of computation
         # net a. Do not need to update parameters
         with torch.no_grad():
             intrinsic_reward = self.net_ir(state)
@@ -70,7 +68,7 @@ class NN_a_random_b(nn.Module):
 class  Intrinsic_Reward(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(4, 16)
+        self.fc1 = nn.Linear(28, 16)
         self.fc2 = nn.Linear(16, 8)
         self.fc_loc = nn.Linear(8, 1)
 
@@ -82,30 +80,6 @@ class  Intrinsic_Reward(nn.Module):
         x_reward = x_loc
         return x_reward.numpy()
 
-
-
-'''if self.initial:
-    self.initial = False
-    self.random_vetor = torch.rand(16)
-    #self.random_vetor = torch.pow(10, self.random_vetor*2-1)-2 # range [0.1, 10)
-    self.random_vetor = self.random_vetor*4-2 # range [-2, 2)
-    ones = torch.ones(self.into_last_layer)
-    self.random_vetor = torch.where(torch.rand(self.into_last_layer)<0.5,self.random_vetor,ones)'''
-'''if self.initial:
-    self.initial = False
-    para = torch.nn.utils.parameters_to_vector( self.parameters() )
-    mask_random = torch.randn(para.shape)*1+1
-    para_random = mask_random*para
-    final_para_b = torch.where(torch.rand(para.shape)<0.5,para_random,para)
-    torch.nn.utils.vector_to_parameters( final_para_b, self.parameters() )'''
-'''if self.initial:
-    self.initial = False
-    para_b = torch.nn.utils.parameters_to_vector( self.parameters() )
-    para_random = torch.zeros(para_b.shape)
-    mask_random = torch.rand(para_b.shape)
-    mask = mask_random<0.5 
-    final_para_b = torch.where(mask,para_b,para_random)
-    torch.nn.utils.vector_to_parameters( final_para_b, self.parameters() )'''
 
 class Nomalize:
     def __init__(self, N_S):
@@ -183,8 +157,8 @@ class PPO(nn.Module):
         values = self.critic_net(states)
 
         returns,advants = self.get_gae(rewards,masks,values)
-        old_mu = self.actor_net(states)
-        pi = self.actor_net.distribution(old_mu)
+        old_mu,old_std = self.actor_net(states)
+        pi = self.actor_net.distribution(old_mu,old_std)
 
         old_log_prob = pi.log_prob(actions).sum(1,keepdim=True)
 
@@ -199,8 +173,8 @@ class PPO(nn.Module):
                 b_actions = actions[b_index]
                 b_returns = returns[b_index]
 
-                mu = self.actor_net(b_states)
-                pi = self.actor_net.distribution(mu)
+                mu,scale = self.actor_net(b_states)
+                pi = self.actor_net.distribution(mu,scale)
                 new_prob = pi.log_prob(b_actions).sum(1,keepdim=True)
                 old_prob = old_log_prob[b_index].detach()
                 #KL散度正则项
@@ -262,42 +236,38 @@ class PPO(nn.Module):
         return returns, advants
 
 
-
 class Actor(nn.Module):
     def __init__(self,N_S,N_A):
         super(Actor,self).__init__()
         self.fc1 = nn.Linear(N_S,32)
         self.fc2 = nn.Linear(32,16)
+        self.sigma = nn.Linear(16,N_A)
         self.mu = nn.Linear(16,N_A)
-        self.distribution = torch.distributions.Bernoulli
-        self.initial = True; self.random_vetor = None
-        self.into_last_layer = 16
-    #初始化网络参数
-    def set_init(self,layers):
-        for layer in layers:
-            nn.init.normal_(layer.weight,mean=0.,std=0.1)
-            nn.init.constant_(layer.bias,0.)
+        self.mu.weight.data.mul_(0.1)
+        self.mu.bias.data.mul_(0.0)
+        self.distribution = torch.distributions.Normal
+        self.initial = False
 
     def forward(self,s):
         if self.initial:
             self.initial = False
-            self.random_vetor = torch.rand(16)
-            #self.random_vetor = torch.pow(10, self.random_vetor*2-1)-2 # range [0.1, 10)
-            self.random_vetor = self.random_vetor*4-2 # range [-2, 2)
-            ones = torch.ones(self.into_last_layer)
-            #self.random_vetor = torch.where(torch.rand(self.into_last_layer)<0.5,self.random_vetor,ones)
+            nn.init.normal_(self.mu.weight,mean=0.,std=0.1)
+            nn.init.normal_(self.fc2.weight,mean=0.,std=0.1)
         x = torch.tanh(self.fc1(s))
         x = torch.tanh(self.fc2(x))
-        if self.random_vetor is not None:
-            x = x*self.random_vetor
 
-        mu = torch.sigmoid(self.mu(x))
-        return mu
+        mu = self.mu(x)
+        log_sigma = self.sigma(x)
+        #log_sigma = torch.zeros_like(mu)
+        sigma = torch.exp(log_sigma)
+        return mu,sigma
 
     def choose_action(self,s):
-        mu = self.forward(s)
-        Pi = self.distribution(mu)
-        return Pi.sample().numpy().astype(int)[0]
+        mu,sigma = self.forward(s)
+        Pi = self.distribution(mu,sigma)
+        return Pi.sample().numpy()
+
+
 
 #Critic网洛
 class Critic(nn.Module):

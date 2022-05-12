@@ -170,6 +170,7 @@ class OpenES:
     self.rank_fitness = rank_fitness
     # choose optimizer
     self.optimizer = Adam(self, learning_rate)
+    print('start ES, param length is '+str(self.num_params))
 
   def rms_stdev(self):
     sigma = self.sigma

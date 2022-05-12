@@ -13,14 +13,14 @@ import global_
 
 load_and_continue = True # 'True' will load the pervious result and continue trainning.
 auto_save = True # save the result
-task = '1'
+task = '3'
 
 EvolutionStrategy = OpenES# cma.CMAEvolutionStrategy
 
 global_.set_task(task)
 if __name__ == '__main__':
-    num_threads = 12 # '-1' will use all the threads that CPU have. '1' won't use multiple threads and easy to debug.
-    population_size = 100
+    num_threads = 54 # '-1' will use all the threads that CPU have. '1' won't use multiple threads and easy to debug.
+    population_size = 128
 
     # load and continue
     auto_save_file = 'result_data/'+global_.network+global_.environment+'.pkl'
@@ -45,14 +45,18 @@ if __name__ == '__main__':
             print('max',fitness.max(),'mean',fitness.mean(),es.countiter,int(tic_toc[1]-tic_toc[0]), 'seconds')
             tic_toc[0] = time.time()
 
-    # start training
     tic_toc = [time.time(),0]
+    fitness_env.not_early_stopping = True
     while True:
         population_genome = es.ask() # next generation, a 2-D array
         fitness = fitness_env.get_fitness(population_genome)
         #fit_min = np.std(fitness)/(fitness-fitness.min()+1)
         es.tell(fitness)
+        fitness_env.check_validation(es.mu) # for early stopping
+        auto_save_file =  'result_data/'+global_.network+global_.environment+str(fitness_env.generation)+'.pkl'
         print_and_save(fitness_env, es, fitness, tic_toc)
+
+    print('Early stopping')
 
 
 

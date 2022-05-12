@@ -15,7 +15,7 @@ import my_gym as gym
 repeat_time = 200
 #random_gravity = True
 #random_inhibit_action = True
-env_num = 20
+env_num = 5
 device = torch.device('cpu')
 
 
@@ -40,7 +40,7 @@ def _fitness_single_env(parameters, seed_i=None):
 
     nn_model = make_nn()
     torch.nn.utils.vector_to_parameters( torch.tensor(parameters, dtype=torch.float32, device=device), nn_model.parameters() )
-    nn_model.net_pg.actor_net.initial = False
+    #nn_model.net_pg.actor_net.initial = False
     import global_
     env = gym.make(global_.environment)
     reward_record = []
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     env_seed = 1
 
     global_.set_task(load_task)
-    auto_save_file = 'result_data/'+global_.network+global_.environment+'.pkl'
+    auto_save_file = 'result_data/'+global_.network+global_.environment+'200.pkl'
     with open(auto_save_file, 'rb') as f:  # Python 3: open(..., 'rb')
         fitness_env, es = pickle.load(f)
         #para = es.result[0]

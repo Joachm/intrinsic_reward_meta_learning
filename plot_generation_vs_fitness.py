@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from fitness import Fitness, set_parallel
 import global_
 
-load_task = '1'
+load_task = '3'
 
 def smooth(a,WSZ):
     # a: NumPy 1-D array containing the data to be smoothed
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     # load and continue
     global_.set_task(load_task)
-    auto_save_file = 'result_data/'+global_.network+global_.environment+'.pkl'
+    auto_save_file = 'result_data/'+global_.network+global_.environment+'150.pkl'
     with open(auto_save_file, 'rb') as f:  # Python 3: open(..., 'rb')
         species, es = pickle.load(f)
 

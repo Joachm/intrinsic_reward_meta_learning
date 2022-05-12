@@ -1,3 +1,4 @@
+import multiprocessing
 import time
 import numpy as np
 import pickle
@@ -15,33 +16,36 @@ import my_gym as gym
 repeat_time = 200
 #random_gravity = True
 #random_inhibit_action = True
-env_num = 5
+env_num = 4
 device = torch.device('cpu')
+load_task = '1'
 
 
 def fitness_(worker_args):
-    environment_seed, parameters = worker_args
-    reward_set = []
+    environment_seed, population_para = worker_args
+    if pool is not None: # run paralelly
+        worker_args_list = []
+        for z in range(env_num):
+            worker_args_list.append( (population_para) )
+        rewards  = pool.map(_fitness_single_env, worker_args_list[z])
+    else:
+        rewards = []
+        for z in range(env_num):
+            worker_args = (population_para)
+            rewards.append( _fitness_single_env(worker_args) )
 
-    def _generate_random_environment_seed(environment_seed):
-        np.random.seed(environment_seed)
-        envs_seed = np.random.randint(1e9, size=env_num)
-        return envs_seed
-    envs_seed = _generate_random_environment_seed(environment_seed)
-    for i in range(len(envs_seed)):
-        reward_single_env = _fitness_single_env(parameters, (envs_seed[i],i)) # a number
-        reward_set.append(reward_single_env) # a list
-
-    return reward_set
+    return rewards
 
 
 
-def _fitness_single_env(parameters, seed_i=None):
+def _fitness_single_env(parameters,):
 
     nn_model = make_nn()
     torch.nn.utils.vector_to_parameters( torch.tensor(parameters, dtype=torch.float32, device=device), nn_model.parameters() )
-    import global_
-    env = gym.make(global_.environment)
+    #nn_model.net_pg.actor_net.initial = False
+    #import global_
+    #global_.set_task(load_task)
+    env = gym.make('CartPole-v0')
     reward_record = []
     for i_episode in range(repeat_time):
         #try:
@@ -61,17 +65,24 @@ def _fitness_single_env(parameters, seed_i=None):
             #reward_record.append(reward_episode)
     return reward_record
 
-
 if __name__ == '__main__':
-    load_task = '3'
+    def set_parallel(num_threads):
+        num_threads = multiprocessing.cpu_count() if num_threads == -1 else num_threads
+        num_threads = num_threads if num_threads<=12 else 12
+        global pool 
+        pool = multiprocessing.Pool(num_threads) if num_threads > 1 else None
+
+
     env_seed = 1
+    set_parallel(env_num)
+
 
     global_.set_task(load_task)
-    auto_save_file = 'result_data/'+global_.network+global_.environment+'150.pkl'
+    auto_save_file = 'result_data/'+global_.network+global_.environment+'.pkl'
     with open(auto_save_file, 'rb') as f:  # Python 3: open(..., 'rb')
         fitness_env, es = pickle.load(f)
         #para = es.result[0]
-        para = es.mu
+        para = es.result.xfavorite
     worker_args = env_seed, para
     reward_set = fitness_(worker_args)
     teat_auto_save_file = 'result_data/test_'+global_.network+global_.environment+'.pkl'
