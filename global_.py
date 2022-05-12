@@ -17,28 +17,28 @@ def set_task(task):
     global environment, network, repeat_time, in_count
     if task == '1':
         network = 'NN_ab' # the 2-network
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '2':
         network = 'NN_forward'
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '3':
         network = 'NN_a_random_b' # only evolve critic network, random action network at each lifecycle. 
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '4':
         network = 'NN_forward_hyperNEAT_b'
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '5':
         network = 'NN_a_hyperNEAT_b' # evovle critic network and a cppn that generate action network.
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '6':
         network = 'NN_forward_part_random'
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '7':
         network = 'NN_forward_hebbian' # hebbian network.
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
     elif task == '10':
         network = 'NN_rnn'
-        environment = 'AntBullet-v0'
+        environment = 'AntBulletEnv-v0'
 
     else:
         raise NameError('Didn\'t have this task.')

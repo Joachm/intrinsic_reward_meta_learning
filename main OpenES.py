@@ -11,7 +11,7 @@ import warnings
 warnings.simplefilter('error')
 import global_
 
-load_and_continue = True # 'True' will load the pervious result and continue trainning.
+load_and_continue = False # 'True' will load the pervious result and continue trainning.
 auto_save = True # save the result
 task = '3'
 
